@@ -1,0 +1,509 @@
+import streamlit as st
+import numpy as np
+import plotly.graph_objects as go
+from PIL import Image, ImageDraw
+from scipy.signal import convolve2d
+from streamlit_plotly_events import plotly_events
+
+
+# ============================================================
+# PAGE CONFIGURATION
+# ============================================================
+
+st.set_page_config(
+    page_title="Image Processing",
+    page_icon="🖼️",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+
+
+# ============================================================
+# SCREENSHOT STYLE CSS
+# ============================================================
+
+st.markdown("""
+<style>
+
+* {
+    font-family: "Times New Roman", Times, serif !important;
+}
+
+.stApp {
+    background:
+    radial-gradient(circle at 4% 0%, #eef3ff 0%, transparent 18%),
+    radial-gradient(circle at 98% 0%, #f4eaff 0%, transparent 18%),
+    linear-gradient(135deg, #fafcff, #ffffff);
+}
+
+.block-container {
+    padding: 8px 24px 12px 24px !important;
+    max-width: 1500px !important;
+}
+
+header {
+    visibility: hidden;
+}
+
+#MainMenu {
+    visibility: hidden;
+}
+
+footer {
+    visibility: hidden;
+}
+
+.main-title {
+    text-align: center;
+    font-size: 46px;
+    font-weight: bold;
+    color: #294a78;
+    margin: 0;
+}
+
+.subtitle {
+    text-align: center;
+    font-size: 18px;
+    font-weight: bold;
+    color: #7044b5;
+    margin: 2px 0 5px;
+}
+
+.title-line {
+    width: 180px;
+    height: 3px;
+    margin: 6px auto 12px;
+    background: linear-gradient(
+        90deg,
+        #6f42c1,
+        #7299e8,
+        #6f42c1
+    );
+}
+
+.section-title {
+    font-size: 19px;
+    font-weight: bold;
+    color: white;
+    padding: 7px 14px;
+    border-radius: 8px 8px 0 0;
+    background: linear-gradient(
+        90deg,
+        #713fc1,
+        #667eea,
+        #6c9ce8
+    );
+    margin: 8px 0 6px;
+}
+
+.theory-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    width: 100%;
+}
+
+.theory-box {
+    background: linear-gradient(
+        145deg,
+        #ffffff,
+        #f8faff
+    );
+    border: 1px solid #e1e5ee;
+    border-radius: 9px;
+    padding: 11px;
+    min-height: 145px;
+    box-shadow: 0 2px 7px rgba(60,70,110,.08);
+}
+
+.theory-head {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.theory-number {
+    display: inline-flex;
+    width: 27px;
+    height: 27px;
+    min-width: 27px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.purple { background: linear-gradient(145deg, #8b5cf6, #6d3bc1); }
+.blue { background: linear-gradient(145deg, #5b8def, #3266c5); }
+.green { background: linear-gradient(145deg, #4fa982, #25835e); }
+.orange { background: linear-gradient(145deg, #f6a623, #e26b00); }
+
+.theory-heading {
+    font-size: 14px;
+    color: #6540b5;
+    font-weight: bold;
+}
+
+.theory-text {
+    font-size: 14px;
+    line-height: 1.45;
+    color: #3f4650;
+    margin-top: 8px;
+    min-height: 62px;
+}
+
+.formula-label {
+    font-size: 11px;
+    color: #596477;
+    font-weight: bold;
+    margin-bottom: 3px;
+}
+
+.formula-box {
+    background: #f6f8ff;
+    border: 1px solid #d6deef;
+    border-radius: 6px;
+    text-align: center;
+    padding: 5px;
+    font-size: 12px;
+    font-weight: bold;
+    color: #394d73;
+}
+
+.card {
+    background: #ffffff;
+    border: 1px solid #dbe4ef;
+    border-radius: 9px;
+    padding: 9px;
+    box-shadow: 0 2px 7px rgba(50,70,100,.07);
+}
+
+.card-title {
+    font-size: 15px;
+    font-weight: bold;
+    color: #6040ae;
+    margin-bottom: 4px;
+}
+
+.selection-card {
+    background: linear-gradient(145deg, #ffffff, #faf8ff);
+    border: 1px solid #c9b2ff;
+    border-radius: 9px;
+    padding: 10px 12px;
+    min-height: 90px;
+}
+
+.selection-card-blue {
+    background: linear-gradient(145deg, #ffffff, #f7fbff);
+    border: 1px solid #a8caff;
+    border-radius: 9px;
+    padding: 10px 12px;
+    min-height: 90px;
+}
+
+.selection-heading {
+    color: #6941b5;
+    font-size: 14px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.info-box {
+    background: #f7f9fd;
+    border: 1px solid #e0e6f0;
+    border-radius: 7px;
+    padding: 6px;
+    text-align: center;
+}
+
+.info-title {
+    font-size: 11px;
+    color: #53627a;
+}
+
+.info-value {
+    font-size: 12px;
+    font-weight: bold;
+    color: #45679b;
+}
+
+.small-note {
+    color: #65748b;
+    font-size: 11px;
+    text-align: center;
+    margin-top: 3px;
+}
+
+div[data-testid="stVerticalBlock"] {
+    gap: .3rem;
+}
+
+div[data-testid="stHorizontalBlock"] {
+    gap: .65rem;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+
+# ============================================================
+# TITLE
+# ============================================================
+
+st.markdown("""
+<div class="main-title">
+    🖼️ IMAGE PROCESSING
+</div>
+<div class="subtitle">
+    Interactive Spatial Domain & Gradient Operator Laboratory
+</div>
+<div class="title-line"></div>
+""", unsafe_allow_html=True)
+
+
+# ============================================================
+# THEORY
+# ============================================================
+
+st.markdown('<div class="section-title">📚 Theory</div>', unsafe_allow_html=True)
+
+st.markdown("""
+<div class="theory-grid">
+<div class="theory-box">
+<div class="theory-head"><span class="theory-number purple">01</span><span class="theory-heading">Spatial Domain Processing</span></div>
+<div class="theory-text">Spatial domain processing directly modifies pixel intensity values using a small matrix called a <b>kernel</b> or <b>mask</b>.</div>
+<div class="formula-label">Basic equation:</div>
+<div class="formula-box">g(x,y) = ΣΣ f(x+i,y+j) × h(i,j)</div>
+</div>
+<div class="theory-box">
+<div class="theory-head"><span class="theory-number blue">02</span><span class="theory-heading">Image Filtering</span></div>
+<div class="theory-text">Filtering smooths, sharpens, or enhances an image. Low-pass filters reduce rapid intensity changes.</div>
+<div class="formula-label">Average filter:</div>
+<div class="formula-box">h(i,j) = 1/9 for a 3 × 3 kernel</div>
+</div>
+<div class="theory-box">
+<div class="theory-head"><span class="theory-number green">03</span><span class="theory-heading">Gradient Operators</span></div>
+<div class="theory-text">Gradient operators detect intensity changes and are widely used for edge detection (Gx and Gy).</div>
+<div class="formula-label">Gradient magnitude:</div>
+<div class="formula-box">G = √(Gx² + Gy²)</div>
+</div>
+<div class="theory-box">
+<div class="theory-head"><span class="theory-number orange">04</span><span class="theory-heading">Convolution</span></div>
+<div class="theory-text">Convolution moves the kernel over the image to perform element-by-element neighborhood multiplication.</div>
+<div class="formula-label">Basic operation:</div>
+<div class="formula-box">Pixel × Kernel → Output Pixel</div>
+</div>
+</div>
+""", unsafe_allow_html=True)
+
+
+# ============================================================
+# OPERATION SELECTION
+# ============================================================
+
+st.markdown('<div class="section-title">⚙️ Select Image Processing Operation</div>', unsafe_allow_html=True)
+
+select_col1, select_col2 = st.columns(2)
+
+with select_col1:
+    st.markdown('<div class="selection-card"><div class="selection-heading">📚 Processing Category</div></div>', unsafe_allow_html=True)
+    operation_type = st.selectbox("Processing Category", ["Spatial Domain Methods", "Gradient Operators"], label_visibility="collapsed")
+
+with select_col2:
+    if operation_type == "Spatial Domain Methods":
+        st.markdown('<div class="selection-card-blue"><div class="selection-heading">🎯 Select Spatial Domain Method</div></div>', unsafe_allow_html=True)
+        operation = st.selectbox("Select Spatial Domain Method", ["Identity", "Blur / Average", "Gaussian-like Blur", "Sharpen", "Emboss", "Outline", "Custom Kernel"], label_visibility="collapsed")
+    else:
+        st.markdown('<div class="selection-card-blue"><div class="selection-heading">🎯 Select Gradient Operator</div></div>', unsafe_allow_html=True)
+        operation = st.selectbox("Select Gradient Operator", ["Sobel X", "Sobel Y", "Prewitt X", "Prewitt Y", "Laplacian", "Roberts X", "Roberts Y"], label_visibility="collapsed")
+
+
+# ============================================================
+# KERNEL DEFINITIONS
+# ============================================================
+
+def get_kernel(op):
+    kernels = {
+        "Identity": np.array([[0,0,0],[0,1,0],[0,0,0]], float),
+        "Blur / Average": np.ones((3,3), float) / 9,
+        "Gaussian-like Blur": np.array([[1,2,1],[2,4,2],[1,2,1]], float) / 16,
+        "Sharpen": np.array([[0,-1,0],[-1,5,-1],[0,-1,0]], float),
+        "Emboss": np.array([[-2,-1,0],[-1,1,1],[0,1,2]], float),
+        "Outline": np.array([[-1,-1,-1],[-1,8,-1],[-1,-1,-1]], float),
+        "Sobel X": np.array([[-1,0,1],[-2,0,2],[-1,0,1]], float),
+        "Sobel Y": np.array([[-1,-2,-1],[0,0,0],[1,2,1]], float),
+        "Prewitt X": np.array([[-1,0,1],[-1,0,1],[-1,0,1]], float),
+        "Prewitt Y": np.array([[-1,-1,-1],[0,0,0],[1,1,1]], float),
+        "Laplacian": np.array([[0,1,0],[1,-4,1],[0,1,0]], float),
+        "Roberts X": np.array([[1,0,0],[0,-1,0],[0,0,0]], float),
+        "Roberts Y": np.array([[0,1,0],[-1,0,0],[0,0,0]], float)
+    }
+    return kernels.get(op)
+
+kernel = get_kernel(operation)
+
+if operation == "Custom Kernel":
+    st.markdown("### ✏️ Create Your Own 3 × 3 Kernel")
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        a11 = st.number_input("K11", value=0.0)
+        a21 = st.number_input("K21", value=0.0)
+        a31 = st.number_input("K31", value=0.0)
+    with c2:
+        a12 = st.number_input("K12", value=0.0)
+        a22 = st.number_input("K22", value=1.0)
+        a32 = st.number_input("K32", value=0.0)
+    with c3:
+        a13 = st.number_input("K13", value=0.0)
+        a23 = st.number_input("K23", value=0.0)
+        a33 = st.number_input("K33", value=0.0)
+    kernel = np.array([[a11,a12,a13],[a21,a22,a23],[a31,a32,a33]], dtype=float)
+
+
+# ============================================================
+# DEFAULT IMAGE & UPLOAD
+# ============================================================
+
+def create_default_image():
+    img = Image.new("L", (160,120), 235)
+    d = ImageDraw.Draw(img)
+    d.rectangle([0,0,160,75], fill=210)
+    d.ellipse([110,12,145,47], fill=250)
+    d.polygon([(0,75),(35,35),(65,75)], fill=90)
+    d.polygon([(40,75),(85,25),(135,75)], fill=120)
+    d.rectangle([0,75,160,120], fill=150)
+    d.rectangle([55,50,105,95], fill=75)
+    return np.array(img)
+
+kernel_col, upload_col = st.columns([0.8, 1.2])
+
+with kernel_col:
+    st.markdown('<div class="card"><div class="card-title">🔲 Active 3 × 3 Kernel</div></div>', unsafe_allow_html=True)
+    figk = go.Figure(data=go.Heatmap(z=kernel, text=np.round(kernel,3), texttemplate="%{text}", colorscale="Blues", showscale=False, x=["1","2","3"], y=["1","2","3"]))
+    figk.update_layout(height=210, margin=dict(l=15, r=15, t=8, b=15), font=dict(family="Times New Roman", size=15))
+    st.plotly_chart(figk, use_container_width=True)
+
+with upload_col:
+    st.markdown('<div class="card"><div class="card-title">🖼️ Input Image</div></div>', unsafe_allow_html=True)
+    uploaded_file = st.file_uploader("Choose an image to process", type=["png", "jpg", "jpeg", "bmp"])
+
+if uploaded_file is not None:
+    im = Image.open(uploaded_file).convert("L").resize((160,120))
+    image_array = np.array(im)
+    source_text = "Uploaded Image"
+else:
+    image_array = create_default_image()
+    source_text = "Default Image"
+
+i1, i2, i3 = st.columns(3)
+with i1:
+    st.markdown(f'<div class="info-box"><div class="info-title">📐 Width</div><div class="info-value">{image_array.shape[1]} px</div></div>', unsafe_allow_html=True)
+with i2:
+    st.markdown(f'<div class="info-box"><div class="info-title">📐 Height</div><div class="info-value">{image_array.shape[0]} px</div></div>', unsafe_allow_html=True)
+with i3:
+    st.markdown(f'<div class="info-box"><div class="info-title">🎨 Channels</div><div class="info-value">Grayscale</div></div>', unsafe_allow_html=True)
+
+st.markdown(f'<div class="small-note">Source: {source_text} • Move your cursor over the image to see live calculations.</div>', unsafe_allow_html=True)
+
+
+# ============================================================
+# PROCESSING
+# ============================================================
+
+def process_image(img, op, k):
+    if op == "Sobel Magnitude":
+        kx = np.array([[-1,0,1],[-2,0,2],[-1,0,1]], float)
+        ky = np.array([[-1,-2,-1],[0,0,0],[1,2,1]], float)
+        gx = convolve2d(img, kx, mode="same", boundary="symm")
+        gy = convolve2d(img, ky, mode="same", boundary="symm")
+        result = np.sqrt(gx**2 + gy**2)
+    else:
+        result = convolve2d(img, k, mode="same", boundary="symm")
+    
+    result = np.abs(result)
+    if result.max() > result.min():
+        result = ((result - result.min()) / (result.max() - result.min())) * 255
+    return np.clip(result, 0, 255).astype(np.uint8)
+
+output_image = process_image(image_array, operation, kernel)
+
+
+# ============================================================
+# DISPLAY INPUT & OUTPUT
+# ============================================================
+
+st.markdown('<div class="section-title">🖼️ Input & Output Image</div>', unsafe_allow_html=True)
+image_col1, image_col2 = st.columns(2)
+
+with image_col1:
+    st.markdown('<div class="card"><div class="card-title">🖼️ Input Image</div></div>', unsafe_allow_html=True)
+    st.image(image_array, use_container_width=True, clamp=True)
+
+with image_col2:
+    st.markdown(f'<div class="card"><div class="card-title">✨ Output Image ({operation})</div></div>', unsafe_allow_html=True)
+    st.image(output_image, use_container_width=True, clamp=True)
+
+
+# ============================================================
+# INTERACTIVE KERNEL + LIVE CALCULATION
+# ============================================================
+
+if "cursor_row" not in st.session_state:
+    st.session_state.cursor_row = image_array.shape[0] // 2
+if "cursor_col" not in st.session_state:
+    st.session_state.cursor_col = image_array.shape[1] // 2
+
+r = max(1, min(st.session_state.cursor_row, image_array.shape[0] - 2))
+c = max(1, min(st.session_state.cursor_col, image_array.shape[1] - 2))
+
+interactive_col, calculation_col = st.columns([1, 1.25])
+
+with interactive_col:
+    st.markdown('<div class="section-title">🎯 Interactive 3 × 3 Kernel Window (Move Cursor)</div>', unsafe_allow_html=True)
+    fig = go.Figure()
+    fig.add_trace(go.Heatmap(z=image_array, x=np.arange(image_array.shape[1]), y=np.arange(image_array.shape[0]), colorscale="Gray", zmin=0, zmax=255, showscale=True, hovertemplate="Column: %{x}<br>Row: %{y}<br>Pixel: %{z}<extra></extra>"))
+    
+    for dx in [-1,0,1]:
+        for dy in [-1,0,1]:
+            fig.add_shape(type="rect", x0=c+dx-.5, x1=c+dx+.5, y0=r+dy-.5, y1=r+dy+.5, line=dict(color="#ff3158", width=2), fillcolor="rgba(255,50,80,.05)")
+
+    fig.add_shape(type="rect", x0=c-.5, x1=c+.5, y0=r-.5, y1=r+.5, line=dict(color="#00d4ff", width=4), fillcolor="rgba(0,212,255,.10)")
+    fig.update_layout(height=430, margin=dict(l=35, r=15, t=8, b=30), xaxis=dict(title=dict(text="Column (X)", font=dict(family="Times New Roman", size=14)), showgrid=False, autorange="reversed"), yaxis=dict(title=dict(text="Row (Y)", font=dict(family="Times New Roman", size=14)), showgrid=False, scaleanchor="x", scaleratio=1, autorange="reversed"), font=dict(family="Times New Roman", size=13))
+
+    events = plotly_events(fig, hover_event=True, click_event=False, select_event=False, override_height=430, override_width="100%", key="live_image")
+    if events:
+        event = events[-1]
+        if "x" in event and "y" in event:
+            nc = max(1, min(int(round(event["x"])), image_array.shape[1]-2))
+            nr = max(1, min(int(round(event["y"])), image_array.shape[0]-2))
+            st.session_state.cursor_col = nc
+            st.session_state.cursor_row = nr
+            st.rerun()
+
+with calculation_col:
+    st.markdown('<div class="section-title">🧮 Live Kernel Calculation</div>', unsafe_allow_html=True)
+    pixel_block = image_array[r-1:r+2, c-1:c+2].astype(float)
+    multiplication = pixel_block * kernel
+    convolution_sum = np.sum(multiplication)
+    final_pixel = np.clip(abs(convolution_sum), 0, 255)
+
+    calc1, calc2, calc3 = st.columns([1, 1, 0.8])
+
+    with calc1:
+        st.markdown("### ① Selected Pixels")
+        pf = go.Figure(data=go.Heatmap(z=pixel_block, text=pixel_block.astype(int), texttemplate="%{text}", colorscale="Greys", showscale=False))
+        pf.update_layout(height=220, margin=dict(l=10, r=10, t=5, b=5), font=dict(family="Times New Roman", size=16))
+        st.plotly_chart(pf, use_container_width=True)
+
+    with calc2:
+        st.markdown("### ② Pixel × Kernel")
+        mf = go.Figure(data=go.Heatmap(z=multiplication, text=np.round(multiplication, 2), texttemplate="%{text}", colorscale="Blues", showscale=False))
+        mf.update_layout(height=220, margin=dict(l=10, r=10, t=5, b=5), font=dict(family="Times New Roman", size=16))
+        st.plotly_chart(mf, use_container_width=True)
+
+    with calc3:
+        st.markdown("### ③ Output")
+        st.metric(label="Sum Value", value=f"{convolution_sum:.1f}")
+        st.metric(label="Final Pixel", value=f"{int(final_pixel)}")
