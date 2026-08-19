@@ -1,0 +1,6 @@
+streamlit
+numpy
+plotly
+scipy
+streamlit-plotly-events
+pillow
